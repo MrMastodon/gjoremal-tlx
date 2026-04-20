@@ -15,6 +15,8 @@ button{font-family:inherit;cursor:pointer}
 .fade{animation:fadeIn .25s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.dimrow{transition:fill .15s}
+g:hover .dimrow{fill:rgba(59,130,246,0.08)}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a1628}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
 </style>
 </head>
@@ -237,15 +239,15 @@ function chartDimensions() {
   const bars = avgs.map((d, i) => {
     const y = PL + i * (BH + GAP), bw = (d.avg / 100) * maxW;
     return `<g data-dim="${d.id}" style="cursor:pointer">
-      <rect x="0" y="${y}" width="${W}" height="${BH}" fill="transparent"/>
+      <rect class="dimrow" x="0" y="${y-3}" width="${W}" height="${BH+6}" rx="5" fill="transparent"/>
       <text x="${LW-8}" y="${y+BH/2+4}" text-anchor="end" fill="#94a3b8" font-size="12" font-family="monospace">${d.icon} ${d.label}</text>
       <rect x="${LW}" y="${y}" width="${maxW}" height="${BH}" rx="5" fill="#1e293b"/>
       <rect x="${LW}" y="${y}" width="${bw}" height="${BH}" rx="5" fill="${d.color}" opacity="0.85"/>
       <text x="${LW+maxW+8}" y="${y+BH/2+4}" text-anchor="start" fill="${d.color}" font-size="13" font-weight="700" font-family="monospace">${d.avg}</text>
-      <text x="${LW+maxW+28}" y="${y+BH/2+4}" fill="#334155" font-size="11" font-family="monospace">›</text>
+      <text x="${LW+maxW+30}" y="${y+BH/2+4}" text-anchor="start" fill="#3b82f6" font-size="14" font-weight="700" font-family="monospace">›</text>
     </g>`;
   }).join("");
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${bars}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;border-radius:8px">${bars}</svg>`;
 }
 
 // ── Pages ─────────────────────────────────────────────────────────────────────
@@ -257,13 +259,14 @@ function pHome() {
       ${chartRanking()}
     </div>
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px 18px;margin-bottom:12px">
-      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:12px;letter-spacing:1px">HVILKE BELASTNINGER KOMMER OFTEST (snitt per dimensjon)</div>
+      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:4px;letter-spacing:1px">HVILKE BELASTNINGER KOMMER OFTEST</div>
+      <div style="color:#475569;font-size:11px;margin-bottom:12px">Snitt per dimensjon, trykk for rangering</div>
       ${chartDimensions()}
     </div>` : "";
 
   return `<div class="fade">
     <h1 style="font-size:24px;font-weight:700;margin-bottom:6px;color:#f1f5f9">Navn på gjøremålet</h1>
-    <p style="color:#64748b;margin-bottom:20px;font-size:14px">Skriv inn navnet på gjøremålet du nettopp fullførte.</p>
+    <p style="color:#64748b;margin-bottom:20px;font-size:14px">Skriv inn navnet på gjøremålet du skal score.</p>
     <input type="text" id="ti" value="${S.taskName.replace(/"/g, "&quot;")}" placeholder="f.eks. rengjøre bad, levere bil til service …"
       style="width:100%;background:#0f172a;border:1.5px solid #1e293b;border-radius:10px;padding:15px 16px;color:#e2e8f0;font-size:16px;margin-bottom:6px;transition:border-color .2s">
     <div id="nameHint" style="font-size:11px;color:${!S.taskName.trim() ? "#f59e0b" : "transparent"};margin-bottom:10px;padding-left:4px">⚠ Du må skrive inn et navn for å gå videre</div>
