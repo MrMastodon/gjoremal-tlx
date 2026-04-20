@@ -48,6 +48,7 @@ const DEFAULT_WEIGHTS = () => ({mental:0, fysisk:0, tidspress:0, resultat:0, inn
 let S = {
   page: "home",       // home | assess | reg | settings
   visDetail: null,    // task name when drilling into a task's history
+  dimDetail: null,    // dimension id when drilling into a dimension ranking
   step: 0,
   taskName: "",
   pairIdx: 0,
@@ -235,10 +236,14 @@ function chartDimensions() {
   const H = avgs.length * (BH + GAP) + PL * 2;
   const bars = avgs.map((d, i) => {
     const y = PL + i * (BH + GAP), bw = (d.avg / 100) * maxW;
-    return `<text x="${LW-8}" y="${y+BH/2+4}" text-anchor="end" fill="#94a3b8" font-size="12" font-family="monospace">${d.icon} ${d.label}</text>
+    return `<g data-dim="${d.id}" style="cursor:pointer">
+      <rect x="0" y="${y}" width="${W}" height="${BH}" fill="transparent"/>
+      <text x="${LW-8}" y="${y+BH/2+4}" text-anchor="end" fill="#94a3b8" font-size="12" font-family="monospace">${d.icon} ${d.label}</text>
       <rect x="${LW}" y="${y}" width="${maxW}" height="${BH}" rx="5" fill="#1e293b"/>
       <rect x="${LW}" y="${y}" width="${bw}" height="${BH}" rx="5" fill="${d.color}" opacity="0.85"/>
-      <text x="${LW+maxW+8}" y="${y+BH/2+4}" text-anchor="start" fill="${d.color}" font-size="13" font-weight="700" font-family="monospace">${d.avg}</text>`;
+      <text x="${LW+maxW+8}" y="${y+BH/2+4}" text-anchor="start" fill="${d.color}" font-size="13" font-weight="700" font-family="monospace">${d.avg}</text>
+      <text x="${LW+maxW+28}" y="${y+BH/2+4}" fill="#334155" font-size="11" font-family="monospace">›</text>
+    </g>`;
   }).join("");
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${bars}</svg>`;
 }
@@ -456,7 +461,45 @@ function p3() {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
+function pDimDetail() {
+  const dim = DIM.find(d => d.id === S.dimDetail);
+  if (!dim) return "";
+  const taskMap = buildTaskMap();
+  const ranked = [...taskMap.values()]
+    .map(entries => {
+      const latest = entries[entries.length - 1];
+      const score = latest.scores?.[dim.id] ?? null;
+      return score !== null ? {task: latest.task, score, ts: latest.ts} : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score);
+
+  const items = ranked.map(e => {
+    const c = col(e.score);
+    return `<div style="padding:10px 0;border-bottom:1px solid #0f172a">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
+        <span style="color:#e2e8f0;font-size:15px;font-weight:600;word-break:break-word;line-height:1.4">${e.task}</span>
+        <span style="font-family:monospace;font-size:22px;font-weight:700;color:${c};flex-shrink:0">${e.score}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${e.score}%;background:${c};border-radius:3px;opacity:0.85"></div>
+        </div>
+        <button data-rescore="${encodeURIComponent(e.task)}" style="background:#0f172a;border:1.5px solid #334155;border-radius:8px;padding:7px 12px;color:#94a3b8;font-size:13px;white-space:nowrap;flex-shrink:0">↺ Score igjen</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  return `<div class="fade">
+    ${backBtn("dimDetailBack", "← Tilbake til oversikt")}
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9">${dim.icon} ${dim.label}</h2>
+    <div style="color:#64748b;font-size:14px;margin-bottom:20px">Gjøremål rangert etter denne belastningen — siste scoring</div>
+    ${ranked.length ? items : `<div style="text-align:center;color:#475569;padding:40px 0;font-size:14px">Ingen registreringer ennå</div>`}
+  </div>`;
+}
+
 function currentPage() {
+  if (S.dimDetail)          return pDimDetail();
   if (S.visDetail)          return pVisDetail();
   if (S.page === "settings") return pSettings();
   if (S.page === "reg")      return pReg();
@@ -574,6 +617,10 @@ function bind(fid) {
 
   // Detail back
   on("detailBack", () => { S.visDetail = null; render(); });
+  on("dimDetailBack", () => { S.dimDetail = null; render(); });
+  document.querySelectorAll("[data-dim]").forEach(g => g.addEventListener("click", () => {
+    S.dimDetail = g.dataset.dim; render();
+  }));
 
   // Avbryt assessment
   on("avbryt", () => showModal(
