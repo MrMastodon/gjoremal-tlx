@@ -554,13 +554,37 @@ function render() {
   bind(fid);
 }
 
+// ── History API navigation ────────────────────────────────────────────────────
+function pushNav() {
+  history.pushState({
+    page: S.page,
+    step: S.step,
+    visDetail: S.visDetail,
+    dimDetail: S.dimDetail,
+  }, "");
+}
+
+window.addEventListener("popstate", e => {
+  if (!e.state) return;
+  const st = e.state;
+  S.page      = st.page      ?? "home";
+  S.step      = st.step      ?? 0;
+  S.visDetail = st.visDetail ?? null;
+  S.dimDetail = st.dimDetail ?? null;
+  // If we popped back out of assess mid-flow, reset form
+  if (S.page !== "assess") {
+    S.confirmDeleteAll = false;
+  }
+  render();
+});
+
 // ── Event binding ─────────────────────────────────────────────────────────────
 function bind(fid) {
   const $ = id => document.getElementById(id);
   const on = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };
 
   // Always-bind: gear, import, export
-  on("gearBtn", () => { S.page = "settings"; render(); });
+  on("gearBtn", () => { S.page = "settings"; pushNav(); render(); });
   on("impBtn",  () => $(fid).click());
   on("expBtn",  () => {
     if (!S.history.length) return;
@@ -594,7 +618,7 @@ function bind(fid) {
   }
 
   // Settings back
-  on("settingsBack", () => { S.page = "home"; render(); });
+  on("settingsBack", () => { S.page = "home"; pushNav(); render(); });
 
   // Home
   const ti = $("ti");
@@ -615,19 +639,19 @@ function bind(fid) {
     ti.addEventListener("blur",    e => e.target.style.borderColor = "#1e293b");
     ti.addEventListener("keydown", e => { if (e.key === "Enter" && S.taskName.trim()) { S.page = "assess"; S.step = 1; render(); } });
   }
-  on("sb",     () => { if (!S.taskName.trim()) return; S.page = "assess"; S.step = 1; render(); });
-  on("visBtn", () => { S.page = "reg"; S.confirmDeleteAll = false; render(); });
+  on("sb",     () => { if (!S.taskName.trim()) return; S.page = "assess"; S.step = 1; pushNav(); render(); });
+  on("visBtn", () => { S.page = "reg"; S.confirmDeleteAll = false; pushNav(); render(); });
 
   // Data-driven buttons on home charts
   document.querySelectorAll("[data-detail]").forEach(b => b.addEventListener("click", () => {
-    S.visDetail = decodeURIComponent(b.dataset.detail); S.dimDetail = null; render();
+    S.visDetail = decodeURIComponent(b.dataset.detail); S.dimDetail = null; pushNav(); render();
   }));
   document.querySelectorAll("[data-rescore]").forEach(b => b.addEventListener("click", () => {
-    resetForm(); S.taskName = decodeURIComponent(b.dataset.rescore); S.page = "assess"; S.step = 1; render();
+    resetForm(); S.taskName = decodeURIComponent(b.dataset.rescore); S.page = "assess"; S.step = 1; pushNav(); render();
   }));
 
   // Reg page
-  on("regBack", () => { S.page = "home"; S.confirmDeleteAll = false; render(); });
+  on("regBack", () => { S.page = "home"; S.confirmDeleteAll = false; pushNav(); render(); });
   on("dab", () => { S.confirmDeleteAll = true; render(); });
   on("cda", () => { S.history = []; S.confirmDeleteAll = false; saveH(); toast("🗑️ Alle registreringer er slettet"); });
   on("xda", () => { S.confirmDeleteAll = false; render(); });
@@ -637,10 +661,10 @@ function bind(fid) {
   }));
 
   // Detail back
-  on("detailBack", () => { S.visDetail = null; render(); });
-  on("dimDetailBack", () => { S.dimDetail = null; render(); });
+  on("detailBack", () => { S.visDetail = null; pushNav(); render(); });
+  on("dimDetailBack", () => { S.dimDetail = null; pushNav(); render(); });
   document.querySelectorAll("[data-dim]").forEach(g => g.addEventListener("click", () => {
-    S.dimDetail = g.dataset.dim; S.visDetail = null; render();
+    S.dimDetail = g.dataset.dim; S.visDetail = null; pushNav(); render();
   }));
 
   // Avbryt assessment
@@ -665,8 +689,8 @@ function bind(fid) {
       db.style.borderColor = borderCol(c);
     }
   }));
-  on("b01", () => { S.step = 0; render(); });
-  on("b12", () => { S.step = 2; render(); });
+  on("b01", () => { S.step = 0; pushNav(); render(); });
+  on("b12", () => { S.step = 2; pushNav(); render(); });
 
   // Pairwise (p2)
   document.querySelectorAll(".pb").forEach(b => {
@@ -689,7 +713,7 @@ function bind(fid) {
       }, 120);
     });
   });
-  on("b21", () => { S.step = 1; S.pairIdx = 0; S.weights = DEFAULT_WEIGHTS(); S.weightHistory = []; render(); });
+  on("b21", () => { S.step = 1; S.pairIdx = 0; S.weights = DEFAULT_WEIGHTS(); S.weightHistory = []; pushNav(); render(); });
   on("undoPick", () => {
     if (S.weightHistory.length === 0) return;
     const prev = S.weightHistory.pop();
@@ -699,7 +723,7 @@ function bind(fid) {
   });
 
   // Result (p3)
-  on("sav", () => { resetForm(); S.page = "home"; S.step = 0; render(); });
+  on("sav", () => { resetForm(); S.page = "home"; S.step = 0; pushNav(); render(); });
   on("b30", () => showModal(
     "Slett denne registreringen?",
     `Registreringen av «${escHtml(S.taskName) || "gjøremålet"}» vil bli permanent slettet.`,
@@ -716,6 +740,7 @@ function bind(fid) {
   ));
 }
 
+history.replaceState({page:"home",step:0,visDetail:null,dimDetail:null}, "");
 render();
 </script>
 </body>
