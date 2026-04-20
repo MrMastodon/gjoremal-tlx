@@ -206,20 +206,19 @@ function chartRanking() {
           (e.scores[b.id]||0)*(e.weights[b.id]||0) - (e.scores[a.id]||0)*(e.weights[a.id]||0)
         )[0]
       : null;
-    return `<div style="padding:14px 0;border-bottom:1px solid #0f172a">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
-        <div style="min-width:0">
-          <div style="color:#e2e8f0;font-size:16px;font-weight:600;word-break:break-word;line-height:1.4">${e.task}</div>
-          ${topD ? `<div style="margin-top:4px;font-size:13px;color:#64748b">${topD.icon} ${topD.label} veide tyngst</div>` : ""}
-          ${multi ? `<button data-detail="${encodeURIComponent(e.task)}" style="margin-top:6px;display:inline-block;background:#0a2240;border:1.5px solid #3b82f6;border-radius:7px;padding:5px 12px;color:#60a5fa;font-size:14px;font-weight:600">Se ${count} scoringer →</button>` : ""}
+    return `<div style="padding:10px 0;border-bottom:1px solid #0f172a">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="color:#e2e8f0;font-size:15px;font-weight:600;word-break:break-word;line-height:1.4">${e.task}</span>
+            ${topD ? `<span style="font-size:12px;color:#64748b;white-space:nowrap;flex-shrink:0">${topD.icon} ${topD.label}</span>` : ""}
+          </div>
         </div>
         <span style="font-family:monospace;font-size:22px;font-weight:700;color:${c};flex-shrink:0">${e.score}</span>
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="flex:1;height:8px;background:#1e293b;border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${e.score}%;background:${c};border-radius:4px;opacity:0.85"></div>
-        </div>
-        <button data-rescore="${encodeURIComponent(e.task)}" style="background:#0f172a;border:1.5px solid #334155;border-radius:8px;padding:8px 14px;color:#94a3b8;font-size:14px;white-space:nowrap;flex-shrink:0">↺ Score igjen</button>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button data-rescore="${encodeURIComponent(e.task)}" style="background:#0f172a;border:1.5px solid #334155;border-radius:8px;padding:7px 12px;color:#94a3b8;font-size:13px;white-space:nowrap">↺ Score igjen</button>
+        ${multi ? `<button data-detail="${encodeURIComponent(e.task)}" style="background:#0a2240;border:1.5px solid #3b82f6;border-radius:8px;padding:7px 12px;color:#60a5fa;font-size:13px;font-weight:600;white-space:nowrap">Se ${count} scoringer →</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -412,12 +411,12 @@ function p2() {
   return `<div class="fade">
     <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">Hva føltes tyngst?</h2>
     <p style="color:#64748b;font-size:13px;margin-bottom:16px">Klikk på det som bidro mest til belastningen for <strong style="color:#94a3b8">${S.taskName || "dette gjøremålet"}</strong>.</p>
-    ${milestone ? `<div style="background:#0a2a1a;border:1px solid #166534;border-radius:8px;padding:10px 16px;margin-bottom:14px;color:#4ade80;font-size:13px">✓ ${milestone}</div>` : ""}
     <div style="background:#0a1628;border-radius:12px;padding:18px;margin-bottom:16px">
       <div style="display:flex;gap:3px;margin-bottom:8px">${bars}</div>
       <div style="color:#475569;font-size:11px;font-family:monospace;text-align:right">${done} av ${total} valgt (${pct}%)</div>
       <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:16px">${cards}</div>
     </div>
+    ${milestone ? `<div style="background:#0a2a1a;border:1px solid #166534;border-radius:8px;padding:10px 16px;margin-bottom:14px;color:#4ade80;font-size:13px">✓ ${milestone}</div>` : ""}
     <button id="b21" style="background:transparent;border:none;color:#475569;font-size:13px;padding:4px 0">← Tilbake til skalaer</button>
   </div>`;
 }
@@ -439,7 +438,8 @@ function p3() {
   }).join("");
   const top = [...DIM].sort((a, b) => (S.scores[b.id] * S.weights[b.id]) - (S.scores[a.id] * S.weights[a.id]))[0];
   return `<div class="fade">
-    <h2 style="font-size:17px;margin-bottom:20px;color:#f1f5f9">Resultat for «${S.taskName || "gjøremålet"}»</h2>
+    <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">Resultat for «${S.taskName || "gjøremålet"}»</h2>
+    <div style="color:#4ade80;font-size:13px;margin-bottom:16px">✓ Registreringen er lagret automatisk</div>
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:16px;padding:28px;text-align:center;margin-bottom:20px">
       ${ring(score, 130)}
       <div style="margin-top:12px;font-family:monospace;font-size:24px;font-weight:700;color:${vd.c}">${vd.t}</div>
@@ -450,7 +450,7 @@ function p3() {
       <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:6px">TRAKK MEST</div>
       <div style="color:#e2e8f0;font-size:14px">${top.icon} <strong>${top.label}</strong> — skår ${S.scores[top.id]}, vekt ${Math.round(S.weights[top.id] / tw * 100)}%</div>
     </div>
-    <button id="sav" style="width:100%;padding:15px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border:none;border-radius:10px;color:white;font-weight:700;font-size:16px;margin-bottom:10px">✓ Lagre og gå tilbake til start</button>
+    <button id="sav" style="width:100%;padding:15px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border:none;border-radius:10px;color:white;font-weight:700;font-size:16px;margin-bottom:10px">Gå tilbake til startsiden</button>
     <button id="b30" style="width:100%;padding:13px;background:transparent;border:1.5px solid #475569;border-radius:10px;color:#475569;font-size:14px">Ikke lagre — gå til start</button>
   </div>`;
 }
@@ -482,7 +482,7 @@ function render() {
       ${inAssess ? `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
           <div style="flex:1">${stepBar(S.step)}</div>
-          <button id="avbryt" style="margin-left:16px;margin-top:2px;background:transparent;border:1px solid #334155;border-radius:7px;padding:5px 12px;color:#64748b;font-size:12px;white-space:nowrap">Avbryt vurdering</button>
+          ${S.step < 3 ? `<button id="avbryt" style="margin-left:16px;margin-top:2px;background:transparent;border:1px solid #334155;border-radius:7px;padding:5px 12px;color:#64748b;font-size:12px;white-space:nowrap">Avbryt vurdering</button>` : ""}
         </div>` : ""}
       ${currentPage()}
     </div>`;
@@ -607,24 +607,34 @@ function bind(fid) {
     b.addEventListener("click", () => {
       b.style.borderColor = "#60a5fa"; b.style.background = "#0d2240";
       S.weights[b.dataset.pick]++;
-      setTimeout(() => { if (S.pairIdx + 1 >= PAIRS.length) S.step = 3; else S.pairIdx++; render(); }, 120);
+      setTimeout(() => {
+        if (S.pairIdx + 1 >= PAIRS.length) {
+          S.step = 3;
+          // Auto-save
+          const sc = wScore(S.scores, S.weights);
+          S.history = [{task:S.taskName||"Uten navn", score:Math.round(sc), scores:{...S.scores}, weights:{...S.weights}, date:new Date().toLocaleDateString("nb-NO"), ts:Date.now()}, ...S.history];
+          saveH();
+        } else { S.pairIdx++; }
+        render();
+      }, 120);
     });
   });
   on("b21", () => { S.step = 1; S.pairIdx = 0; S.weights = DEFAULT_WEIGHTS(); render(); });
 
   // Result (p3)
-  function saveResult() {
-    const sc = wScore(S.scores, S.weights);
-    S.history = [{task:S.taskName||"Uten navn", score:Math.round(sc), scores:{...S.scores}, weights:{...S.weights}, date:new Date().toLocaleDateString("nb-NO"), ts:Date.now()}, ...S.history];
-    saveH(); resetForm(); S.page = "home"; S.step = 0; toast("✅ Lagret!");
-  }
-  on("sav", saveResult);
+  on("sav", () => { resetForm(); S.page = "home"; S.step = 0; render(); });
   on("b30", () => showModal(
-    "Ikke lagre resultatet?",
-    `Skåren for «${S.taskName || "gjøremålet"}» vil gå tapt hvis du går tilbake uten å lagre.`,
+    "Slett denne registreringen?",
+    `Registreringen av «${S.taskName || "gjøremålet"}» vil bli permanent slettet.`,
     [
-      {id:"m_lagre",   label:"Lagre først", primary:true, action:saveResult},
-      {id:"m_forkast", label:"Forkast",     danger:true,  action:() => { resetForm(); S.page = "home"; S.step = 0; render(); }},
+      {id:"m_behold", label:"Behold registreringen"},
+      {id:"m_slett",  label:"Ja, slett", danger:true, action:() => {
+        // Remove the most recently saved entry for this task
+        const key = taskKey(S.taskName || "Uten navn");
+        const idx = S.history.findIndex(h => taskKey(h.task) === key);
+        if (idx !== -1) S.history.splice(idx, 1);
+        saveH(); resetForm(); S.page = "home"; S.step = 0; render();
+      }},
     ]
   ));
 }
