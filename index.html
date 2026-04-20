@@ -592,7 +592,6 @@ function bind(fid) {
     ti.addEventListener("focus",   e => e.target.style.borderColor = "#3b82f6");
     ti.addEventListener("blur",    e => e.target.style.borderColor = "#1e293b");
     ti.addEventListener("keydown", e => { if (e.key === "Enter" && S.taskName.trim()) { S.page = "assess"; S.step = 1; render(); } });
-    setTimeout(() => ti.focus(), 50);
   }
   on("sb",     () => { if (!S.taskName.trim()) return; S.page = "assess"; S.step = 1; render(); });
   on("visBtn", () => { S.page = "reg"; S.confirmDeleteAll = false; render(); });
