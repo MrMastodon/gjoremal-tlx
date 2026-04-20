@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Gjøremål-TLX</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#070d1a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:8px;border-radius:4px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#e2e8f0;cursor:pointer;box-shadow:0 0 0 3px #070d1a,0 0 0 5px #334155;transition:box-shadow .2s}
+input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 0 3px #070d1a,0 0 0 5px #60a5fa}
+input[type=text]{outline:none}
+button{font-family:inherit;cursor:pointer}
+.fade{animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0a1628}::-webkit-scrollbar-thumb{background:#1e293b;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const STORAGE_KEY = "gjoremal_tlx_v1";
+
+const DIM = [
+  {id:"mental",     label:"Mentalt krav",  icon:"🧠", lo:"Svært lite",     hi:"Svært mye",            color:"#60a5fa", desc:"Konsentrasjon og mental innsats"},
+  {id:"fysisk",     label:"Fysisk krav",   icon:"💪", lo:"Svært lite",     hi:"Svært mye",            color:"#34d399", desc:"Bevegelse, kraft og utholdenhet"},
+  {id:"tidspress",  label:"Tidspress",     icon:"⏱️", lo:"Ingen hastverk", hi:"Ekstremt hektisk",     color:"#f59e0b", desc:"Følelse av tidspress og hastverk"},
+  {id:"resultat",   label:"Resultat",      icon:"🎯", lo:"Perfekt",        hi:"Mislykket",            color:"#a78bfa", desc:"Hvor fornøyd er du med resultatet?"},
+  {id:"innsats",    label:"Innsats",       icon:"⚡", lo:"Svært lite",     hi:"Ekstremt mye",         color:"#fb923c", desc:"Innsats du la ned totalt sett"},
+  {id:"frustrasjon",label:"Frustrasjon",   icon:"😤", lo:"Avslappende",    hi:"Ekstremt frustrerende",color:"#f87171", desc:"Irritasjon, stress og frustrasjon"},
+];
+
+const PAIRS = [];
+for (let i = 0; i < DIM.length; i++)
+  for (let j = i + 1; j < DIM.length; j++)
+    PAIRS.push([DIM[i], DIM[j]]);
+
+const MILESTONES = {
+  7:  "Halvveis! Fortsett 💪",
+  13: "To igjen — du er nesten ferdig!",
+};
+
+const DEFAULT_SCORES  = () => ({mental:50,fysisk:50,tidspress:50,resultat:50,innsats:50,frustrasjon:50});
+const DEFAULT_WEIGHTS = () => ({mental:0, fysisk:0, tidspress:0, resultat:0, innsats:0, frustrasjon:0});
+
+let S = {
+  page: "home",       // home | assess | reg | settings
+  visDetail: null,    // task name when drilling into a task's history
+  step: 0,
+  taskName: "",
+  pairIdx: 0,
+  confirmDeleteAll: false,
+  modal: null,        // {title, body, buttons:[{label,id,primary?,danger?,action?}]}
+  toast: null,
+  scores:  DEFAULT_SCORES(),
+  weights: DEFAULT_WEIGHTS(),
+  history: [],
+};
+try { S.history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch {}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function saveH() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S.history)); } catch {} }
+
+function col(v) { return v < 30 ? "#4ade80" : v < 60 ? "#facc15" : v < 80 ? "#fb923c" : "#f87171"; }
+
+function borderCol(c) {
+  return c === "#4ade80" ? "#14532d" : c === "#facc15" ? "#713f12" : c === "#fb923c" ? "#7c2d12" : "#7f1d1d";
+}
+
+function vrd(s) {
+  if (s < 20) return {t:"Trivielt",    c:"#4ade80"};
+  if (s < 40) return {t:"Håndterlig", c:"#86efac"};
+  if (s < 60) return {t:"Merkbart",   c:"#facc15"};
+  if (s < 75) return {t:"Belastende", c:"#fb923c"};
+  return             {t:"Utmattende", c:"#f87171"};
+}
+
+function wScore(sc, wt) {
+  const tw = Object.values(wt).reduce((a, b) => a + b, 0) || 1;
+  return DIM.reduce((a, d) => a + sc[d.id] * (wt[d.id] / tw), 0);
+}
+
+function taskKey(name) { return name.trim().toLowerCase(); }
+
+// Returns map of taskKey -> array of entries (oldest first)
+function buildTaskMap() {
+  const map = new Map();
+  for (const h of [...S.history].reverse()) {
+    const k = taskKey(h.task);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(h);
+  }
+  return map;
+}
+
+// Latest entry per unique task, sorted by score desc
+function uniqueTasks() {
+  const map = buildTaskMap();
+  return [...map.values()]
+    .map(entries => entries[entries.length - 1])
+    .sort((a, b) => b.score - a.score);
+}
+
+// All entries for one task, oldest first
+function taskHistory(name) {
+  return (buildTaskMap().get(taskKey(name)) || []);
+}
+
+let _toastTimer;
+function toast(msg, dur = 4000) {
+  S.toast = msg; render();
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { S.toast = null; render(); }, dur);
+}
+
+function showModal(title, body, buttons) { S.modal = {title, body, buttons}; render(); }
+function closeModal() { S.modal = null; render(); }
+
+function resetForm() {
+  S.taskName = ""; S.pairIdx = 0;
+  S.scores = DEFAULT_SCORES(); S.weights = DEFAULT_WEIGHTS();
+}
+
+// ── UI components ─────────────────────────────────────────────────────────────
+function ring(score, sz = 130) {
+  const r = 44, ci = 2 * Math.PI * r, fi = (score / 100) * ci, c = col(score);
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="#1e293b" stroke-width="10"/>
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="${c}" stroke-width="10"
+      stroke-dasharray="${fi} ${ci}" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+    <text x="50" y="46" text-anchor="middle" fill="${c}" font-size="22" font-weight="700" font-family="monospace">${Math.round(score)}</text>
+    <text x="50" y="62" text-anchor="middle" fill="#64748b" font-size="10" font-family="monospace">/ 100</text>
+  </svg>`;
+}
+
+function backBtn(id, label = "← Tilbake til oversikt") {
+  return `<button id="${id}" style="display:flex;align-items:center;gap:10px;width:100%;background:#0a1628;border:2px solid #3b82f6;border-radius:10px;padding:12px 16px;color:#93c5fd;font-size:16px;font-weight:700;margin-bottom:24px;text-align:left">${label}</button>`;
+}
+
+function stepBar(cur) {
+  const labels = ["Navn", "Skalaer", "Vekting", "Ferdig"];
+  return `<div style="margin-bottom:20px">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      ${labels.map((s,i) => `<div style="flex:1;height:4px;border-radius:2px;background:${i<=cur?"#3b82f6":"#1e293b"};transition:background .3s"></div>`).join("")}
+    </div>
+    <div style="display:flex">
+      ${labels.map((s,i) => `<div style="flex:1;font-size:10px;font-family:monospace;text-align:center;color:${i===cur?"#93c5fd":i<cur?"#3b82f6":"#1e3a5f"}">${i<cur?"✓ ":""}${s}</div>`).join("")}
+    </div>
+  </div>`;
+}
+
+function dimBar(d, v) {
+  const c = col(v);
+  return `<div class="db" data-id="${d.id}" style="background:#0f172a;border:1.5px solid ${borderCol(c)};border-radius:12px;padding:18px 22px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span style="font-size:22px">${d.icon}</span>
+      <div>
+        <div style="color:#e2e8f0;font-weight:700;font-size:15px">${d.label}</div>
+        <div style="color:#64748b;font-size:12px">${d.desc}</div>
+      </div>
+      <span class="vl" style="margin-left:auto;font-family:monospace;font-size:22px;font-weight:700;color:${c};min-width:34px;text-align:right">${v}</span>
+    </div>
+    <div style="margin-top:12px">
+      <input type="range" min="0" max="100" step="5" value="${v}" data-dim="${d.id}"
+        style="background:linear-gradient(to right,${c} ${v}%,#1e293b ${v}%)">
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span style="color:#475569;font-size:11px">${d.lo}</span>
+        <span style="color:#334155;font-size:10px">|</span>
+        <span style="color:#475569;font-size:11px">${d.hi}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function modalHTML() {
+  if (!S.modal) return "";
+  const {title, body, buttons} = S.modal;
+  const btns = buttons.map(b =>
+    `<button id="${b.id}" style="flex:1;padding:12px;border-radius:9px;font-size:14px;font-weight:600;
+      border:${b.danger ? "1.5px solid #f87171" : "1.5px solid #1e293b"};
+      background:${b.primary ? "linear-gradient(135deg,#1d4ed8,#0ea5e9)" : b.danger ? "#1c0000" : "transparent"};
+      color:${b.primary ? "white" : b.danger ? "#f87171" : "#64748b"}">${b.label}</button>`
+  ).join("");
+  return `<div class="modal-bg" id="modalBg">
+    <div style="background:#0f172a;border:1px solid #334155;border-radius:16px;padding:28px;max-width:380px;width:100%">
+      <h3 style="font-size:17px;margin-bottom:10px;color:#f1f5f9">${title}</h3>
+      <p style="color:#64748b;font-size:14px;margin-bottom:24px;line-height:1.6">${body}</p>
+      <div style="display:flex;gap:10px">${btns}</div>
+    </div>
+  </div>`;
+}
+
+// ── Charts ────────────────────────────────────────────────────────────────────
+function chartRanking() {
+  const tasks = uniqueTasks();
+  if (!tasks.length) return "";
+  const taskMap = buildTaskMap();
+  return tasks.map(e => {
+    const c = col(e.score);
+    const count = taskMap.get(taskKey(e.task)).length;
+    const multi = count > 1;
+    return `<div style="padding:14px 0;border-bottom:1px solid #0f172a">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <div style="min-width:0">
+          <div style="color:#e2e8f0;font-size:16px;font-weight:600;word-break:break-word;line-height:1.4">${e.task}</div>
+          ${multi ? `<button data-detail="${encodeURIComponent(e.task)}" style="margin-top:6px;display:inline-block;background:#0a2240;border:1.5px solid #3b82f6;border-radius:7px;padding:5px 12px;color:#60a5fa;font-size:14px;font-weight:600">Se ${count} scoringer →</button>` : ""}
+        </div>
+        <span style="font-family:monospace;font-size:22px;font-weight:700;color:${c};flex-shrink:0">${e.score}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:8px;background:#1e293b;border-radius:4px;overflow:hidden">
+          <div style="height:100%;width:${e.score}%;background:${c};border-radius:4px;opacity:0.85"></div>
+        </div>
+        <button data-rescore="${encodeURIComponent(e.task)}" style="background:#0f172a;border:1.5px solid #334155;border-radius:8px;padding:8px 14px;color:#94a3b8;font-size:14px;white-space:nowrap;flex-shrink:0">↺ Score igjen</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function chartDimensions() {
+  if (!S.history.length) return "";
+  const avgs = DIM.map(d => {
+    const vals = S.history.map(h => h.scores?.[d.id]).filter(v => v != null);
+    return {...d, avg: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0};
+  }).sort((a, b) => b.avg - a.avg);
+  const BH = 28, GAP = 8, LW = 148, PL = 12, PR = 10, W = 520;
+  const maxW = W - LW - 40 - PR;
+  const H = avgs.length * (BH + GAP) + PL * 2;
+  const bars = avgs.map((d, i) => {
+    const y = PL + i * (BH + GAP), bw = (d.avg / 100) * maxW;
+    return `<text x="${LW-8}" y="${y+BH/2+4}" text-anchor="end" fill="#94a3b8" font-size="12" font-family="monospace">${d.icon} ${d.label}</text>
+      <rect x="${LW}" y="${y}" width="${maxW}" height="${BH}" rx="5" fill="#1e293b"/>
+      <rect x="${LW}" y="${y}" width="${bw}" height="${BH}" rx="5" fill="${d.color}" opacity="0.85"/>
+      <text x="${LW+maxW+8}" y="${y+BH/2+4}" text-anchor="start" fill="${d.color}" font-size="13" font-weight="700" font-family="monospace">${d.avg}</text>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${bars}</svg>`;
+}
+
+// ── Pages ─────────────────────────────────────────────────────────────────────
+function pHome() {
+  const n = S.history.length;
+  const charts = n ? `
+    <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px 18px;margin-bottom:12px">
+      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:12px;letter-spacing:1px">OPPLEVD BELASTNING FOR GJØREMÅL</div>
+      ${chartRanking()}
+    </div>
+    <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px 18px;margin-bottom:12px">
+      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:12px;letter-spacing:1px">HVILKE BELASTNINGER KOMMER OFTEST (snitt per dimensjon)</div>
+      ${chartDimensions()}
+    </div>` : "";
+
+  return `<div class="fade">
+    <h1 style="font-size:24px;font-weight:700;margin-bottom:6px;color:#f1f5f9">Hva har du gjort?</h1>
+    <p style="color:#64748b;margin-bottom:20px;font-size:14px">Skriv inn gjøremålet du nettopp fullførte.</p>
+    <input type="text" id="ti" value="${S.taskName.replace(/"/g, "&quot;")}" placeholder="f.eks. rydde kjelleren, levere bilen til service …"
+      style="width:100%;background:#0f172a;border:1.5px solid #1e293b;border-radius:10px;padding:15px 16px;color:#e2e8f0;font-size:16px;margin-bottom:6px;transition:border-color .2s">
+    <div id="nameHint" style="font-size:11px;color:${!S.taskName.trim() ? "#f59e0b" : "transparent"};margin-bottom:10px;padding-left:4px">⚠ Du må skrive inn et navn for å gå videre</div>
+    <div style="display:flex;gap:10px;margin-bottom:28px">
+      <button id="sb" ${!S.taskName.trim() ? `style="flex:1;padding:15px;background:#1e293b;border:none;border-radius:10px;color:#475569;font-weight:700;font-size:16px;cursor:not-allowed"` : `style="flex:1;padding:15px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border:none;border-radius:10px;color:white;font-weight:700;font-size:16px"`}>Start vurdering →</button>
+      <button id="visBtn" style="padding:15px 18px;background:#0a1628;border:1.5px solid #1e293b;border-radius:10px;color:#94a3b8;font-size:14px">📋 Alle registreringer</button>
+    </div>
+    ${charts}
+  </div>`;
+}
+
+function pReg() {
+  const n = S.history.length;
+  const sletteknapp = S.confirmDeleteAll
+    ? `<div style="background:#1c0000;border:2px solid #f87171;border-radius:10px;padding:14px 16px;margin-bottom:8px">
+        <div style="color:#f87171;font-size:15px;font-weight:700;margin-bottom:10px">⚠ Er du sikker? Dette kan ikke angres.</div>
+        <div style="display:flex;gap:10px">
+          <button id="cda" style="flex:1;background:#7f1d1d;border:2px solid #f87171;border-radius:8px;padding:10px;color:#fca5a5;font-size:15px;font-weight:700">Ja, slett alle ${n} registreringer</button>
+          <button id="xda" style="flex:1;background:transparent;border:1.5px solid #334155;border-radius:8px;padding:10px;color:#94a3b8;font-size:15px">Avbryt</button>
+        </div>
+      </div>`
+    : `<button id="dab" style="background:#1c0000;border:2px solid #dc2626;border-radius:8px;padding:10px 16px;color:#f87171;font-size:15px;font-weight:700;width:100%;text-align:left">🗑 Slett alle registreringer</button>`;
+
+  const items = n ? S.history.map((h, i) => {
+    const c = col(h.score), bg = h.score < 40 ? "#052e16" : h.score < 60 ? "#1c1917" : h.score < 75 ? "#1c0a00" : "#1c0000";
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0a1628;border:1.5px solid #1e293b;border-radius:10px;margin-bottom:8px">
+      <div style="width:40px;height:40px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-family:monospace;font-weight:700;font-size:13px;color:${c};flex-shrink:0">${h.score}</div>
+      <div style="flex:1;min-width:0">
+        <div style="color:#e2e8f0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.task}</div>
+        <div style="color:#64748b;font-size:12px;margin-top:2px">${h.date}</div>
+      </div>
+      <button data-del="${i}" title="Slett denne registreringen"
+        style="background:#1c0000;border:2px solid #dc2626;border-radius:8px;padding:6px 12px;color:#f87171;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0">🗑 Slett</button>
+    </div>`;
+  }).join("") : `<div style="text-align:center;color:#475569;padding:40px 0;font-size:14px">Ingen registreringer ennå</div>`;
+
+  return `<div class="fade">
+    ${backBtn("regBack", "← Tilbake til oversikt")}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h2 style="font-size:20px;font-weight:700;color:#f1f5f9;margin:0">Alle registreringer</h2>
+      ${n ? `<span style="color:#475569;font-size:13px">${n} stk</span>` : ""}
+    </div>
+    ${n ? `<div style="margin-bottom:8px">${sletteknapp}</div>` : ""}
+    ${items}
+  </div>`;
+}
+
+function pVisDetail() {
+  const entries = taskHistory(S.visDetail);
+  const name = S.visDetail;
+  const n = entries.length;
+
+  let spark = "";
+  if (n >= 2) {
+    const W = 400, H = 70, PAD = 10;
+    const cw = W - PAD * 2, ch = H - PAD * 2;
+    const pts = entries.map((e, i) => ({x: PAD + (i / (n - 1)) * cw, y: PAD + ch - (e.score / 100) * ch, e}));
+    const path = pts.map((p, i) => (i === 0 ? `M${p.x},${p.y}` : `L${p.x},${p.y}`)).join("");
+    const dots = pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="5" fill="${col(p.e.score)}" stroke="#070d1a" stroke-width="2"><title>${p.e.date}: ${p.e.score}</title></circle>`).join("");
+    spark = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      <path d="${path}" fill="none" stroke="#334155" stroke-width="2"/>
+      ${dots}
+    </svg>`;
+  }
+
+  const rows = [...entries].reverse().map(e => {
+    const c = col(e.score);
+    const bg = e.score < 40 ? "#052e16" : e.score < 60 ? "#1c1917" : e.score < 75 ? "#1c0a00" : "#1c0000";
+    const topD = e.scores ? [...DIM].sort((a, b) =>
+      (e.scores[b.id] || 0) * (e.weights?.[b.id] || 0) - (e.scores[a.id] || 0) * (e.weights?.[a.id] || 0)
+    )[0] : null;
+    return `<div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px 16px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${topD ? 8 : 0}px">
+        <div style="width:48px;height:48px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-family:monospace;font-weight:700;font-size:17px;color:${c};flex-shrink:0">${e.score}</div>
+        <div style="flex:1">
+          <div style="color:#e2e8f0;font-size:16px;font-weight:700">${vrd(e.score).t}</div>
+          <div style="color:#64748b;font-size:14px;margin-top:2px">${e.date}</div>
+        </div>
+        <button data-rescore="${encodeURIComponent(e.task)}" style="background:#0a1628;border:1.5px solid #334155;border-radius:8px;padding:8px 14px;color:#94a3b8;font-size:14px;white-space:nowrap;flex-shrink:0">↺ Score igjen</button>
+      </div>
+      ${topD && e.scores ? `<div style="font-size:14px;color:#64748b;margin-top:6px">Tyngst: ${topD.icon} ${topD.label} (${e.scores[topD.id]})</div>` : ""}
+    </div>`;
+  }).join("");
+
+  return `<div class="fade">
+    ${backBtn("detailBack", "← Tilbake til oversikt")}
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9;word-break:break-word">${name}</h2>
+    <div style="color:#64748b;font-size:14px;margin-bottom:20px">${n} scoring${n !== 1 ? "er" : ""} — eldste øverst</div>
+    ${n >= 2 ? `<div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px">${spark}</div>` : ""}
+    ${rows}
+  </div>`;
+}
+
+function pSettings() {
+  return `<div class="fade">
+    ${backBtn("settingsBack", "← Tilbake")}
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;color:#f1f5f9">Innstillinger</h2>
+    <p style="color:#64748b;font-size:15px;margin-bottom:32px">Importer og eksporter registreringene dine.</p>
+
+    <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:20px;margin-bottom:16px">
+      <h3 style="color:#e2e8f0;font-size:17px;font-weight:700;margin-bottom:8px">Eksporter registreringer</h3>
+      <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:16px">Laster ned alle registreringene dine som en JSON-fil. Nyttig som sikkerhetskopi eller for å flytte data til en annen enhet.</p>
+      <button id="expBtn" style="width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;${!S.history.length ? "background:#1e293b;color:#475569;cursor:not-allowed" : "background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:white;cursor:pointer"}">
+        ↓ Eksporter registreringer${S.history.length ? ` (${S.history.length} stk)` : ""}
+      </button>
+      ${!S.history.length ? `<p style="color:#475569;font-size:13px;margin-top:8px;text-align:center">Ingen registreringer å eksportere ennå</p>` : ""}
+    </div>
+
+    <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:20px">
+      <h3 style="color:#e2e8f0;font-size:17px;font-weight:700;margin-bottom:8px">Importer registreringer</h3>
+      <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:8px">Last inn en tidligere eksportert JSON-fil for å gjenopprette eller flette inn registreringer.</p>
+      <p style="background:#0f172a;border-left:3px solid #3b82f6;padding:10px 14px;border-radius:0 8px 8px 0;color:#94a3b8;font-size:14px;line-height:1.6;margin-bottom:16px">
+        ℹ️ Duplikater ignoreres automatisk — hvis du importerer samme fil flere ganger legges ingenting til på nytt.
+      </p>
+      <button id="impBtn" style="width:100%;padding:14px;background:#0f172a;border:2px solid #334155;border-radius:10px;color:#e2e8f0;font-size:16px;font-weight:700">
+        ↑ Importer registreringer
+      </button>
+    </div>
+  </div>`;
+}
+
+function p1() {
+  const name = S.taskName ? `«${S.taskName}»` : "Gjøremålet";
+  return `<div class="fade">
+    <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">${name}</h2>
+    <p style="color:#64748b;font-size:13px;margin-bottom:20px">Dra hver glidebryter til det som passer best. Midten (50) er nøytralt.</p>
+    ${DIM.map(d => dimBar(d, S.scores[d.id])).join("")}
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button id="b01" style="padding:14px 20px;background:transparent;border:1.5px solid #1e293b;border-radius:10px;color:#64748b;font-size:14px">← Endre navn</button>
+      <button id="b12" style="flex:1;padding:14px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border:none;border-radius:10px;color:white;font-weight:700;font-size:15px">Neste: Vekting →</button>
+    </div>
+  </div>`;
+}
+
+function p2() {
+  const pair = PAIRS[S.pairIdx];
+  const done = S.pairIdx, total = PAIRS.length;
+  const pct = Math.round((done / total) * 100);
+  const milestone = MILESTONES[done];
+  const bars = PAIRS.map((_, i) => `<div style="flex:1;height:4px;background:${i<done?"#3b82f6":i===done?"#60a5fa":"#1e293b"};border-radius:2px"></div>`).join("");
+  const cards = pair.map((d, idx) => `
+    ${idx === 1 ? `<div style="text-align:center;color:#334155;font-family:monospace;font-weight:700;font-size:13px">eller</div>` : ""}
+    <button class="pb" data-pick="${d.id}"
+      style="background:#0f172a;border:2px solid #1e293b;border-radius:14px;padding:22px 14px;color:#e2e8f0;text-align:center;transition:transform .1s,box-shadow .1s,border-color .1s">
+      <div style="font-size:32px;margin-bottom:10px">${d.icon}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px">${d.label}</div>
+      <div style="font-size:11px;color:#64748b">${d.desc}</div>
+    </button>`).join("");
+
+  return `<div class="fade">
+    <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">Hva føltes tyngst?</h2>
+    <p style="color:#64748b;font-size:13px;margin-bottom:16px">Klikk på det som bidro mest til belastningen for <strong style="color:#94a3b8">${S.taskName || "dette gjøremålet"}</strong>.</p>
+    ${milestone ? `<div style="background:#0a2a1a;border:1px solid #166534;border-radius:8px;padding:10px 16px;margin-bottom:14px;color:#4ade80;font-size:13px">✓ ${milestone}</div>` : ""}
+    <div style="background:#0a1628;border-radius:12px;padding:18px;margin-bottom:16px">
+      <div style="display:flex;gap:3px;margin-bottom:8px">${bars}</div>
+      <div style="color:#475569;font-size:11px;font-family:monospace;text-align:right">${done} av ${total} valgt (${pct}%)</div>
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:16px">${cards}</div>
+    </div>
+    <button id="b21" style="background:transparent;border:none;color:#475569;font-size:13px;padding:4px 0">← Tilbake til skalaer</button>
+  </div>`;
+}
+
+function p3() {
+  const score = wScore(S.scores, S.weights), vd = vrd(score);
+  const tw = Object.values(S.weights).reduce((a, b) => a + b, 0) || 1;
+  const rows = DIM.map(d => {
+    const w = S.weights[d.id] / tw, c = col(S.scores[d.id]);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:10px 13px;background:#0a1628;border:1px solid #1e293b;border-radius:8px;margin-bottom:6px">
+      <span style="font-size:17px">${d.icon}</span>
+      <span style="color:#94a3b8;font-size:12px;min-width:110px">${d.label}</span>
+      <div style="flex:1;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${S.scores[d.id]}%;background:${c};border-radius:3px"></div>
+      </div>
+      <span style="font-family:monospace;font-size:12px;color:#64748b;min-width:28px;text-align:right">${S.scores[d.id]}</span>
+      <span style="font-family:monospace;font-size:11px;color:#3b82f6;min-width:42px;text-align:right">w=${Math.round(w * 100)}%</span>
+    </div>`;
+  }).join("");
+  const top = [...DIM].sort((a, b) => (S.scores[b.id] * S.weights[b.id]) - (S.scores[a.id] * S.weights[a.id]))[0];
+  return `<div class="fade">
+    <h2 style="font-size:17px;margin-bottom:20px;color:#f1f5f9">Resultat for «${S.taskName || "gjøremålet"}»</h2>
+    <div style="background:#0a1628;border:1px solid #1e293b;border-radius:16px;padding:28px;text-align:center;margin-bottom:20px">
+      ${ring(score, 130)}
+      <div style="margin-top:12px;font-family:monospace;font-size:24px;font-weight:700;color:${vd.c}">${vd.t}</div>
+      <div style="color:#475569;font-size:12px;margin-top:4px">Vektet TLX-skår</div>
+    </div>
+    ${rows}
+    <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:14px 18px;margin:16px 0">
+      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:6px">TRAKK MEST</div>
+      <div style="color:#e2e8f0;font-size:14px">${top.icon} <strong>${top.label}</strong> — skår ${S.scores[top.id]}, vekt ${Math.round(S.weights[top.id] / tw * 100)}%</div>
+    </div>
+    <button id="sav" style="width:100%;padding:15px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border:none;border-radius:10px;color:white;font-weight:700;font-size:16px;margin-bottom:10px">✓ Lagre og gå tilbake til start</button>
+    <button id="b30" style="width:100%;padding:13px;background:transparent;border:1.5px solid #475569;border-radius:10px;color:#475569;font-size:14px">Ikke lagre — gå til start</button>
+  </div>`;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function currentPage() {
+  if (S.visDetail)          return pVisDetail();
+  if (S.page === "settings") return pSettings();
+  if (S.page === "reg")      return pReg();
+  if (S.page === "assess")   return [pHome, p1, p2, p3][S.step]();
+  return pHome();
+}
+
+function render() {
+  const fid = "fi_" + Date.now();
+  const inAssess = S.page === "assess";
+  document.getElementById("app").innerHTML = `
+    ${S.toast ? `<div style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px 22px;color:#e2e8f0;font-size:14px;font-family:monospace;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.5)">${S.toast}</div>` : ""}
+    ${modalHTML()}
+    <div style="border-bottom:1px solid #1e293b;padding:16px 24px;display:flex;align-items:center;gap:12px;background:#0a1628;position:sticky;top:0;z-index:10">
+      <div style="background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border-radius:8px;padding:6px 11px;font-family:monospace;font-weight:700;font-size:13px;letter-spacing:1px">TLX</div>
+      <div style="font-weight:700;font-size:14px;color:#f1f5f9">Gjøremål-belastningsindeks</div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <input type="file" id="${fid}" accept=".json" style="display:none">
+        <button id="gearBtn" title="Innstillinger" style="background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:8px 12px;color:#94a3b8;font-size:20px;line-height:1">⚙</button>
+      </div>
+    </div>
+    <div style="max-width:620px;margin:0 auto;padding:28px 20px">
+      ${inAssess ? `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <div style="flex:1">${stepBar(S.step)}</div>
+          <button id="avbryt" style="margin-left:16px;margin-top:2px;background:transparent;border:1px solid #334155;border-radius:7px;padding:5px 12px;color:#64748b;font-size:12px;white-space:nowrap">Avbryt vurdering</button>
+        </div>` : ""}
+      ${currentPage()}
+    </div>`;
+  bind(fid);
+}
+
+// ── Event binding ─────────────────────────────────────────────────────────────
+function bind(fid) {
+  const $ = id => document.getElementById(id);
+  const on = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };
+
+  // Always-bind: gear, import, export
+  on("gearBtn", () => { S.page = "settings"; render(); });
+  on("impBtn",  () => $(fid).click());
+  on("expBtn",  () => {
+    if (!S.history.length) return;
+    const b = new Blob([JSON.stringify({version:1, exported:new Date().toISOString(), history:S.history}, null, 2)], {type:"application/json"});
+    const u = URL.createObjectURL(b), a = document.createElement("a");
+    a.href = u; a.download = "gjoremal-tlx-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.click(); URL.revokeObjectURL(u); toast("📥 Eksportfil lastet ned");
+  });
+  $(fid).addEventListener("change", e => {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        const inc = Array.isArray(d) ? d : (d.history || []);
+        if (!Array.isArray(inc)) throw 0;
+        const ex = new Set(S.history.map(x => x.ts));
+        S.history = [...inc.filter(x => !ex.has(x.ts)), ...S.history].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        saveH(); toast("✅ " + inc.length + " oppføringer importert");
+      } catch { toast("❌ Ugyldig fil — er det en TLX-eksportfil?"); }
+    };
+    r.readAsText(f); e.target.value = "";
+  });
+
+  // Modal buttons + backdrop close
+  if (S.modal) {
+    S.modal.buttons.forEach(b => on(b.id, () => { closeModal(); b.action && b.action(); }));
+    const bg = $("modalBg");
+    if (bg) bg.addEventListener("click", e => { if (e.target === bg) closeModal(); });
+    return;
+  }
+
+  // Settings back
+  on("settingsBack", () => { S.page = "home"; render(); });
+
+  // Home
+  const ti = $("ti");
+  if (ti) {
+    ti.addEventListener("input", e => {
+      S.taskName = e.target.value;
+      const hasName = S.taskName.trim().length > 0;
+      const btn = $("sb"), hint = $("nameHint");
+      if (btn) {
+        btn.disabled = !hasName;
+        btn.style.background = hasName ? "linear-gradient(135deg,#1d4ed8,#0ea5e9)" : "#1e293b";
+        btn.style.color = hasName ? "white" : "#475569";
+        btn.style.cursor = hasName ? "pointer" : "not-allowed";
+      }
+      if (hint) hint.style.color = hasName ? "transparent" : "#f59e0b";
+    });
+    ti.addEventListener("focus",   e => e.target.style.borderColor = "#3b82f6");
+    ti.addEventListener("blur",    e => e.target.style.borderColor = "#1e293b");
+    ti.addEventListener("keydown", e => { if (e.key === "Enter" && S.taskName.trim()) { S.page = "assess"; S.step = 1; render(); } });
+    setTimeout(() => ti.focus(), 50);
+  }
+  on("sb",     () => { if (!S.taskName.trim()) return; S.page = "assess"; S.step = 1; render(); });
+  on("visBtn", () => { S.page = "reg"; S.confirmDeleteAll = false; render(); });
+
+  // Data-driven buttons on home charts
+  document.querySelectorAll("[data-detail]").forEach(b => b.addEventListener("click", () => {
+    S.visDetail = decodeURIComponent(b.dataset.detail); render();
+  }));
+  document.querySelectorAll("[data-rescore]").forEach(b => b.addEventListener("click", () => {
+    resetForm(); S.taskName = decodeURIComponent(b.dataset.rescore); S.page = "assess"; S.step = 1; render();
+  }));
+
+  // Reg page
+  on("regBack", () => { S.page = "home"; S.confirmDeleteAll = false; render(); });
+  on("dab", () => { S.confirmDeleteAll = true; render(); });
+  on("cda", () => { S.history = []; S.confirmDeleteAll = false; saveH(); toast("🗑️ Alle registreringer er slettet"); });
+  on("xda", () => { S.confirmDeleteAll = false; render(); });
+  document.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+    S.history = S.history.filter((_, i) => i !== parseInt(b.dataset.del));
+    saveH(); render();
+  }));
+
+  // Detail back
+  on("detailBack", () => { S.visDetail = null; render(); });
+
+  // Avbryt assessment
+  on("avbryt", () => showModal(
+    "Avbryt vurdering?",
+    "Hvis du avbryter nå mister du det du har fylt inn. Vil du avbryte?",
+    [
+      {id:"m_fortsett", label:"Fortsett vurderingen"},
+      {id:"m_avbryt",   label:"Ja, avbryt", danger:true, action:() => { resetForm(); S.page = "home"; S.step = 0; render(); }},
+    ]
+  ));
+
+  // Scales (p1)
+  document.querySelectorAll("input[data-dim]").forEach(inp => inp.addEventListener("input", e => {
+    const id = e.target.dataset.dim, v = Number(e.target.value), c = col(v);
+    S.scores[id] = v;
+    e.target.style.background = `linear-gradient(to right,${c} ${v}%,#1e293b ${v}%)`;
+    const db = e.target.closest(".db");
+    if (db) {
+      db.querySelector(".vl").textContent = v;
+      db.querySelector(".vl").style.color = c;
+      db.style.borderColor = borderCol(c);
+    }
+  }));
+  on("b01", () => { S.step = 0; render(); });
+  on("b12", () => { S.step = 2; render(); });
+
+  // Pairwise (p2)
+  document.querySelectorAll(".pb").forEach(b => {
+    b.addEventListener("mouseenter", () => { b.style.transform = "translateY(-2px)"; b.style.boxShadow = "0 8px 24px rgba(59,130,246,.2)"; b.style.borderColor = "#3b82f6"; });
+    b.addEventListener("mouseleave", () => { b.style.transform = ""; b.style.boxShadow = ""; b.style.borderColor = "#1e293b"; });
+    b.addEventListener("click", () => {
+      b.style.borderColor = "#60a5fa"; b.style.background = "#0d2240";
+      S.weights[b.dataset.pick]++;
+      setTimeout(() => { if (S.pairIdx + 1 >= PAIRS.length) S.step = 3; else S.pairIdx++; render(); }, 120);
+    });
+  });
+  on("b21", () => { S.step = 1; S.pairIdx = 0; S.weights = DEFAULT_WEIGHTS(); render(); });
+
+  // Result (p3)
+  function saveResult() {
+    const sc = wScore(S.scores, S.weights);
+    S.history = [{task:S.taskName||"Uten navn", score:Math.round(sc), scores:{...S.scores}, weights:{...S.weights}, date:new Date().toLocaleDateString("nb-NO"), ts:Date.now()}, ...S.history];
+    saveH(); resetForm(); S.page = "home"; S.step = 0; toast("✅ Lagret!");
+  }
+  on("sav", saveResult);
+  on("b30", () => showModal(
+    "Ikke lagre resultatet?",
+    `Skåren for «${S.taskName || "gjøremålet"}» vil gå tapt hvis du går tilbake uten å lagre.`,
+    [
+      {id:"m_lagre",   label:"Lagre først", primary:true, action:saveResult},
+      {id:"m_forkast", label:"Forkast",     danger:true,  action:() => { resetForm(); S.page = "home"; S.step = 0; render(); }},
+    ]
+  ));
+}
+
+render();
+</script>
+</body>
+</html>
