@@ -65,7 +65,13 @@ let S = {
 try { S.history = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch {}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function saveH() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(S.history)); } catch {} }
+function saveH() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(S.history));
+  } catch {
+    toast("⚠️ Kunne ikke lagre — nettleseren har ikke tilgang til lokal lagring.");
+  }
+}
 
 function col(v) { return v < 30 ? "#4ade80" : v < 60 ? "#facc15" : v < 80 ? "#fb923c" : "#f87171"; }
 
@@ -87,6 +93,14 @@ function wScore(sc, wt) {
 }
 
 function taskKey(name) { return name.trim().toLowerCase(); }
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 // Returns map of taskKey -> array of entries (oldest first)
 function buildTaskMap() {
@@ -215,7 +229,7 @@ function chartRanking() {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
         <div style="min-width:0;flex:1">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="color:#e2e8f0;font-size:15px;font-weight:600;word-break:break-word;line-height:1.4">${e.task}</span>
+            <span style="color:#e2e8f0;font-size:15px;font-weight:600;word-break:break-word;line-height:1.4">${escHtml(e.task)}</span>
             ${topD ? `<span style="font-size:12px;color:#64748b;white-space:nowrap;flex-shrink:0">${topD.icon} ${topD.label}</span>` : ""}
           </div>
         </div>
@@ -297,7 +311,7 @@ function pReg() {
     return `<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0a1628;border:1.5px solid #1e293b;border-radius:10px;margin-bottom:8px">
       <div style="width:40px;height:40px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-family:monospace;font-weight:700;font-size:13px;color:${c};flex-shrink:0">${h.score}</div>
       <div style="flex:1;min-width:0">
-        <div style="color:#e2e8f0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.task}</div>
+        <div style="color:#e2e8f0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(h.task)}</div>
         <div style="color:#64748b;font-size:12px;margin-top:2px">${h.date}</div>
       </div>
       <button data-del="${i}" title="Slett denne registreringen"
@@ -349,13 +363,13 @@ function pVisDetail() {
         </div>
         <button data-rescore="${encodeURIComponent(e.task)}" style="background:#0a1628;border:1.5px solid #334155;border-radius:8px;padding:8px 14px;color:#94a3b8;font-size:14px;white-space:nowrap;flex-shrink:0">↺ Score igjen</button>
       </div>
-      ${topD && e.scores ? `<div style="font-size:14px;color:#64748b;margin-top:6px">Tyngst: ${topD.icon} ${topD.label} (${e.scores[topD.id]})</div>` : ""}
+      ${topD && e.scores ? `<div style="font-size:14px;color:#64748b;margin-top:6px">Tyngst: ${topD.icon} ${escHtml(topD.label)} (${e.scores[topD.id]})</div>` : ""}
     </div>`;
   }).join("");
 
   return `<div class="fade">
     ${backBtn("detailBack", "← Tilbake til oversikt")}
-    <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9;word-break:break-word">${name}</h2>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9;word-break:break-word">${escHtml(name)}</h2>
     <div style="color:#64748b;font-size:14px;margin-bottom:20px">${n} scoring${n !== 1 ? "er" : ""} — eldste øverst</div>
     ${n >= 2 ? `<div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px">${spark}</div>` : ""}
     ${rows}
@@ -420,7 +434,7 @@ function p2() {
 
   return `<div class="fade">
     <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">Hva føltes tyngst?</h2>
-    <p style="color:#64748b;font-size:13px;margin-bottom:16px">Klikk på det som bidro mest til belastningen for <strong style="color:#94a3b8">${S.taskName || "dette gjøremålet"}</strong>.</p>
+    <p style="color:#64748b;font-size:13px;margin-bottom:16px">Klikk på det som bidro mest til belastningen for <strong style="color:#94a3b8">${escHtml(S.taskName) || "dette gjøremålet"}</strong>.</p>
     <div style="background:#0a1628;border-radius:12px;padding:18px;margin-bottom:16px">
       <div style="display:flex;gap:3px;margin-bottom:8px">${bars}</div>
       <div style="color:#475569;font-size:11px;font-family:monospace;text-align:right">${done} av ${total} valgt (${pct}%)</div>
@@ -451,7 +465,7 @@ function p3() {
   }).join("");
   const top = [...DIM].sort((a, b) => (S.scores[b.id] * S.weights[b.id]) - (S.scores[a.id] * S.weights[a.id]))[0];
   return `<div class="fade">
-    <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">Resultat for «${S.taskName || "gjøremålet"}»</h2>
+    <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">Resultat for «${escHtml(S.taskName) || "gjøremålet"}»</h2>
     <div style="color:#4ade80;font-size:13px;margin-bottom:16px">✓ Registreringen er lagret automatisk</div>
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:16px;padding:28px;text-align:center;margin-bottom:20px">
       ${ring(score, 130)}
@@ -486,7 +500,7 @@ function pDimDetail() {
     const c = col(e.score);
     return `<div style="padding:10px 0;border-bottom:1px solid #0f172a">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px">
-        <span style="color:#e2e8f0;font-size:15px;font-weight:600;word-break:break-word;line-height:1.4">${e.task}</span>
+        <span style="color:#e2e8f0;font-size:15px;font-weight:600;word-break:break-word;line-height:1.4">${escHtml(e.task)}</span>
         <span style="font-family:monospace;font-size:22px;font-weight:700;color:${c};flex-shrink:0">${e.score}</span>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -606,7 +620,7 @@ function bind(fid) {
 
   // Data-driven buttons on home charts
   document.querySelectorAll("[data-detail]").forEach(b => b.addEventListener("click", () => {
-    S.visDetail = decodeURIComponent(b.dataset.detail); render();
+    S.visDetail = decodeURIComponent(b.dataset.detail); S.dimDetail = null; render();
   }));
   document.querySelectorAll("[data-rescore]").forEach(b => b.addEventListener("click", () => {
     resetForm(); S.taskName = decodeURIComponent(b.dataset.rescore); S.page = "assess"; S.step = 1; render();
@@ -626,7 +640,7 @@ function bind(fid) {
   on("detailBack", () => { S.visDetail = null; render(); });
   on("dimDetailBack", () => { S.dimDetail = null; render(); });
   document.querySelectorAll("[data-dim]").forEach(g => g.addEventListener("click", () => {
-    S.dimDetail = g.dataset.dim; render();
+    S.dimDetail = g.dataset.dim; S.visDetail = null; render();
   }));
 
   // Avbryt assessment
@@ -668,7 +682,7 @@ function bind(fid) {
           S.step = 3;
           // Auto-save
           const sc = wScore(S.scores, S.weights);
-          S.history = [{task:S.taskName||"Uten navn", score:Math.round(sc), scores:{...S.scores}, weights:{...S.weights}, date:new Date().toLocaleDateString("nb-NO"), ts:Date.now()}, ...S.history];
+          S.history = [{task:S.taskName||"Uten navn", score:Math.round(sc), scores:{...S.scores}, weights:{...S.weights}, date:new Date().toLocaleDateString("nb-NO"), ts:Date.now() + Math.random()}, ...S.history];
           saveH();
         } else { S.pairIdx++; }
         render();
@@ -688,7 +702,7 @@ function bind(fid) {
   on("sav", () => { resetForm(); S.page = "home"; S.step = 0; render(); });
   on("b30", () => showModal(
     "Slett denne registreringen?",
-    `Registreringen av «${S.taskName || "gjøremålet"}» vil bli permanent slettet.`,
+    `Registreringen av «${escHtml(S.taskName) || "gjøremålet"}» vil bli permanent slettet.`,
     [
       {id:"m_behold", label:"Behold registreringen"},
       {id:"m_slett",  label:"Ja, slett", danger:true, action:() => {
