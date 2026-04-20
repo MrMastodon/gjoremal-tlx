@@ -201,10 +201,16 @@ function chartRanking() {
     const c = col(e.score);
     const count = taskMap.get(taskKey(e.task)).length;
     const multi = count > 1;
+    const topD = e.scores && e.weights
+      ? [...DIM].sort((a, b) =>
+          (e.scores[b.id]||0)*(e.weights[b.id]||0) - (e.scores[a.id]||0)*(e.weights[a.id]||0)
+        )[0]
+      : null;
     return `<div style="padding:14px 0;border-bottom:1px solid #0f172a">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
         <div style="min-width:0">
           <div style="color:#e2e8f0;font-size:16px;font-weight:600;word-break:break-word;line-height:1.4">${e.task}</div>
+          ${topD ? `<div style="margin-top:4px;font-size:13px;color:#64748b">${topD.icon} ${topD.label} veide tyngst</div>` : ""}
           ${multi ? `<button data-detail="${encodeURIComponent(e.task)}" style="margin-top:6px;display:inline-block;background:#0a2240;border:1.5px solid #3b82f6;border-radius:7px;padding:5px 12px;color:#60a5fa;font-size:14px;font-weight:600">Se ${count} scoringer →</button>` : ""}
         </div>
         <span style="font-family:monospace;font-size:22px;font-weight:700;color:${c};flex-shrink:0">${e.score}</span>
@@ -252,9 +258,9 @@ function pHome() {
     </div>` : "";
 
   return `<div class="fade">
-    <h1 style="font-size:24px;font-weight:700;margin-bottom:6px;color:#f1f5f9">Hva har du gjort?</h1>
-    <p style="color:#64748b;margin-bottom:20px;font-size:14px">Skriv inn gjøremålet du nettopp fullførte.</p>
-    <input type="text" id="ti" value="${S.taskName.replace(/"/g, "&quot;")}" placeholder="f.eks. rydde kjelleren, levere bilen til service …"
+    <h1 style="font-size:24px;font-weight:700;margin-bottom:6px;color:#f1f5f9">Navn på gjøremålet</h1>
+    <p style="color:#64748b;margin-bottom:20px;font-size:14px">Skriv inn navnet på gjøremålet du nettopp fullførte.</p>
+    <input type="text" id="ti" value="${S.taskName.replace(/"/g, "&quot;")}" placeholder="f.eks. rengjøre bad, levere bil til service …"
       style="width:100%;background:#0f172a;border:1.5px solid #1e293b;border-radius:10px;padding:15px 16px;color:#e2e8f0;font-size:16px;margin-bottom:6px;transition:border-color .2s">
     <div id="nameHint" style="font-size:11px;color:${!S.taskName.trim() ? "#f59e0b" : "transparent"};margin-bottom:10px;padding-left:4px">⚠ Du må skrive inn et navn for å gå videre</div>
     <div style="display:flex;gap:10px;margin-bottom:28px">
