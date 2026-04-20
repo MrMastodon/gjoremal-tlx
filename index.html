@@ -51,6 +51,7 @@ let S = {
   page: "home",       // home | assess | reg | settings
   visDetail: null,    // task name when drilling into a task's history
   dimDetail: null,    // dimension id when drilling into a dimension ranking
+  weightHistory: [],  // stack of weight snapshots for undo in pairwise
   step: 0,
   taskName: "",
   pairIdx: 0,
@@ -124,6 +125,7 @@ function closeModal() { S.modal = null; render(); }
 function resetForm() {
   S.taskName = ""; S.pairIdx = 0;
   S.scores = DEFAULT_SCORES(); S.weights = DEFAULT_WEIGHTS();
+  S.weightHistory = [];
 }
 
 // ── UI components ─────────────────────────────────────────────────────────────
@@ -425,7 +427,10 @@ function p2() {
       <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:16px">${cards}</div>
     </div>
     ${milestone ? `<div style="background:#0a2a1a;border:1px solid #166534;border-radius:8px;padding:10px 16px;margin-bottom:14px;color:#4ade80;font-size:13px">✓ ${milestone}</div>` : ""}
-    <button id="b21" style="background:transparent;border:none;color:#475569;font-size:13px;padding:4px 0">← Tilbake til skalaer</button>
+    <div style="display:flex;gap:16px;align-items:center;margin-top:4px">
+      <button id="b21" style="background:transparent;border:none;color:#475569;font-size:13px;padding:4px 0">← Tilbake til skalaer</button>
+      ${S.weightHistory.length > 0 ? `<button id="undoPick" style="background:transparent;border:none;color:#60a5fa;font-size:13px;padding:4px 0">↩ Angre siste valg</button>` : ""}
+    </div>
   </div>`;
 }
 
@@ -441,7 +446,7 @@ function p3() {
         <div style="height:100%;width:${S.scores[d.id]}%;background:${c};border-radius:3px"></div>
       </div>
       <span style="font-family:monospace;font-size:12px;color:#64748b;min-width:28px;text-align:right">${S.scores[d.id]}</span>
-      <span style="font-family:monospace;font-size:11px;color:#3b82f6;min-width:42px;text-align:right">w=${Math.round(w * 100)}%</span>
+
     </div>`;
   }).join("");
   const top = [...DIM].sort((a, b) => (S.scores[b.id] * S.weights[b.id]) - (S.scores[a.id] * S.weights[a.id]))[0];
@@ -655,6 +660,8 @@ function bind(fid) {
     b.addEventListener("mouseleave", () => { b.style.transform = ""; b.style.boxShadow = ""; b.style.borderColor = "#1e293b"; });
     b.addEventListener("click", () => {
       b.style.borderColor = "#60a5fa"; b.style.background = "#0d2240";
+      // Save snapshot for undo
+      S.weightHistory.push({pairIdx: S.pairIdx, weights: {...S.weights}});
       S.weights[b.dataset.pick]++;
       setTimeout(() => {
         if (S.pairIdx + 1 >= PAIRS.length) {
@@ -668,7 +675,14 @@ function bind(fid) {
       }, 120);
     });
   });
-  on("b21", () => { S.step = 1; S.pairIdx = 0; S.weights = DEFAULT_WEIGHTS(); render(); });
+  on("b21", () => { S.step = 1; S.pairIdx = 0; S.weights = DEFAULT_WEIGHTS(); S.weightHistory = []; render(); });
+  on("undoPick", () => {
+    if (S.weightHistory.length === 0) return;
+    const prev = S.weightHistory.pop();
+    S.pairIdx = prev.pairIdx;
+    S.weights = prev.weights;
+    render();
+  });
 
   // Result (p3)
   on("sav", () => { resetForm(); S.page = "home"; S.step = 0; render(); });
