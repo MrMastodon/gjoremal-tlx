@@ -26,12 +26,12 @@ g:hover .dimrow{fill:rgba(59,130,246,0.08)}
 const STORAGE_KEY = "gjoremal_tlx_v1";
 
 const DIM = [
-  {id:"mental",     label:"Mentalt krav",  icon:"🧠", lo:"Svært lite",     hi:"Svært mye",            color:"#60a5fa", desc:"Konsentrasjon og mental innsats"},
-  {id:"fysisk",     label:"Fysisk krav",   icon:"💪", lo:"Svært lite",     hi:"Svært mye",            color:"#34d399", desc:"Bevegelse, kraft og utholdenhet"},
-  {id:"tidspress",  label:"Tidspress",     icon:"⏱️", lo:"Ingen hastverk", hi:"Ekstremt hektisk",     color:"#f59e0b", desc:"Følelse av tidspress og hastverk"},
-  {id:"resultat",   label:"Resultat",      icon:"🎯", lo:"Perfekt",        hi:"Mislykket",            color:"#a78bfa", desc:"Hvor fornøyd er du med resultatet?"},
-  {id:"innsats",    label:"Innsats",       icon:"⚡", lo:"Svært lite",     hi:"Ekstremt mye",         color:"#fb923c", desc:"Innsats du la ned totalt sett"},
-  {id:"frustrasjon",label:"Frustrasjon",   icon:"😤", lo:"Avslappende",    hi:"Ekstremt frustrerende",color:"#f87171", desc:"Irritasjon, stress og frustrasjon"},
+  {id:"mental",     label:"Mentalt krav",  icon:"🧠", lo:"Enkelt",         hi:"Svært krevende",       color:"#60a5fa", desc:"Hvor mye mental innsats krevde oppgaven? Var den enkel eller krevende, oversiktlig eller kompleks?"},
+  {id:"fysisk",     label:"Fysisk krav",   icon:"💪", lo:"Lett",           hi:"Svært anstrengende",   color:"#34d399", desc:"Hvor mye fysisk aktivitet krevde oppgaven? Var den lett eller anstrengende?"},
+  {id:"tidspress",  label:"Tidspress",     icon:"⏱️", lo:"Rolig tempo",    hi:"Svært hektisk",        color:"#f59e0b", desc:"Hvor mye tidspress opplevde du? Føltes tempoet rolig eller hektisk?"},
+  {id:"resultat",   label:"Resultat",      icon:"🎯", lo:"Svært fornøyd",  hi:"Ikke fornøyd",         color:"#a78bfa", desc:"Hvor godt synes du at du utførte oppgaven? Hvor fornøyd er du med innsatsen din?"},
+  {id:"innsats",    label:"Innsats",       icon:"⚡", lo:"Svært lite",     hi:"Ekstremt mye",         color:"#fb923c", desc:"Hvor hardt måtte du jobbe, mentalt og fysisk, for å gjennomføre oppgaven?"},
+  {id:"frustrasjon",label:"Frustrasjon",   icon:"😤", lo:"Avslappet",      hi:"Svært frustrert",      color:"#f87171", desc:"Hvor irritert, stresset eller frustrert følte du deg? Eller var du avslappet og fornøyd?"},
 ];
 
 const PAIRS = [];
@@ -173,21 +173,20 @@ function stepBar(cur) {
 function dimBar(d, v) {
   const c = col(v);
   return `<div class="db" data-id="${d.id}" style="background:#0f172a;border:1.5px solid ${borderCol(c)};border-radius:12px;padding:18px 22px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-      <span style="font-size:22px">${d.icon}</span>
-      <div>
-        <div style="color:#e2e8f0;font-weight:700;font-size:15px">${d.label}</div>
-        <div style="color:#64748b;font-size:12px">${d.desc}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:24px">${d.icon}</span>
+      <div style="flex:1">
+        <div style="color:#f1f5f9;font-weight:700;font-size:17px;margin-bottom:4px">${d.label}</div>
+        <div style="color:#94a3b8;font-size:13px;line-height:1.5">${d.desc}</div>
       </div>
-      <span class="vl" style="margin-left:auto;font-family:monospace;font-size:22px;font-weight:700;color:${c};min-width:34px;text-align:right">${v}</span>
+      <span class="vl" style="margin-left:8px;font-family:monospace;font-size:24px;font-weight:700;color:${c};min-width:38px;text-align:right">${v}</span>
     </div>
-    <div style="margin-top:12px">
+    <div style="margin-top:14px">
       <input type="range" min="0" max="100" step="5" value="${v}" data-dim="${d.id}"
         style="background:linear-gradient(to right,${c} ${v}%,#1e293b ${v}%)">
-      <div style="display:flex;justify-content:space-between;margin-top:6px">
-        <span style="color:#475569;font-size:11px">${d.lo}</span>
-        <span style="color:#334155;font-size:10px">|</span>
-        <span style="color:#475569;font-size:11px">${d.hi}</span>
+      <div style="display:flex;justify-content:space-between;margin-top:8px">
+        <span style="color:#cbd5e1;font-size:13px;font-weight:600">${d.lo}</span>
+        <span style="color:#cbd5e1;font-size:13px;font-weight:600">${d.hi}</span>
       </div>
     </div>
   </div>`;
