@@ -253,7 +253,7 @@ function chartDimensions() {
   const H = avgs.length * (BH + GAP) + PL * 2;
   const bars = avgs.map((d, i) => {
     const y = PL + i * (BH + GAP), bw = (d.avg / 100) * maxW;
-    return `<g data-dim="${d.id}" style="cursor:pointer">
+    return `<g data-dimchart="${d.id}" style="cursor:pointer">
       <rect class="dimrow" x="0" y="${y-3}" width="${W}" height="${BH+6}" rx="5" fill="transparent"/>
       <text x="${LW-8}" y="${y+BH/2+4}" text-anchor="end" fill="#94a3b8" font-size="12" font-family="monospace">${d.icon} ${d.label}</text>
       <rect x="${LW}" y="${y}" width="${maxW}" height="${BH}" rx="5" fill="#1e293b"/>
@@ -661,8 +661,8 @@ function bind(fid) {
   // Detail back
   on("detailBack", () => { S.visDetail = null; pushNav(); render(); });
   on("dimDetailBack", () => { S.dimDetail = null; pushNav(); render(); });
-  document.querySelectorAll("[data-dim]").forEach(g => g.addEventListener("click", () => {
-    S.dimDetail = g.dataset.dim; S.visDetail = null; pushNav(); render();
+  document.querySelectorAll("[data-dimchart]").forEach(g => g.addEventListener("click", () => {
+    S.dimDetail = g.dataset.dimchart; S.visDetail = null; pushNav(); render();
   }));
 
   // Avbryt assessment
