@@ -165,7 +165,7 @@ function stepBar(cur) {
       ${labels.map((s,i) => `<div style="flex:1;height:4px;border-radius:2px;background:${i<=cur?"#3b82f6":"#1e293b"};transition:background .3s"></div>`).join("")}
     </div>
     <div style="display:flex">
-      ${labels.map((s,i) => `<div style="flex:1;font-size:10px;font-family:monospace;text-align:center;color:${i===cur?"#93c5fd":i<cur?"#3b82f6":"#1e3a5f"}">${i<cur?"✓ ":""}${s}</div>`).join("")}
+      ${labels.map((s,i) => `<div style="flex:1;font-size:10px;font-family:monospace;text-align:center;color:${i===cur?"#93c5fd":i<cur?"#3b82f6":"#475569"}">${i<cur?"✓ ":""}${s}</div>`).join("")}
     </div>
   </div>`;
 }
@@ -229,7 +229,7 @@ function chartRanking() {
         <div style="min-width:0;flex:1">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span style="color:#e2e8f0;font-size:15px;font-weight:600;word-break:break-word;line-height:1.4">${escHtml(e.task)}</span>
-            ${topD ? `<span style="font-size:12px;color:#64748b;white-space:nowrap;flex-shrink:0">${topD.icon} ${topD.label}</span>` : ""}
+            ${topD ? `<span style="font-size:13px;color:#94a3b8;white-space:nowrap;flex-shrink:0">${topD.icon} ${topD.label}</span>` : ""}
           </div>
         </div>
         <span style="font-family:monospace;font-size:22px;font-weight:700;color:${c};flex-shrink:0">${e.score}</span>
@@ -270,18 +270,18 @@ function pHome() {
   const n = S.history.length;
   const charts = n ? `
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px 18px;margin-bottom:12px">
-      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:12px;letter-spacing:1px">OPPLEVD BELASTNING FOR GJØREMÅL</div>
+      <div style="color:#60a5fa;font-size:12px;font-family:monospace;margin-bottom:12px;letter-spacing:1px">OPPLEVD BELASTNING FOR GJØREMÅL</div>
       ${chartRanking()}
     </div>
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px 18px;margin-bottom:12px">
-      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:4px;letter-spacing:1px">HVILKE BELASTNINGER KOMMER OFTEST</div>
-      <div style="color:#475569;font-size:11px;margin-bottom:12px">Snitt per dimensjon, trykk for rangering</div>
+      <div style="color:#60a5fa;font-size:12px;font-family:monospace;margin-bottom:4px;letter-spacing:1px">HVILKE BELASTNINGER KOMMER OFTEST</div>
+      <div style="color:#475569;font-size:13px;color:#94a3b8;margin-bottom:12px">Snitt per dimensjon, trykk for rangering</div>
       ${chartDimensions()}
     </div>` : "";
 
   return `<div class="fade">
     <h1 style="font-size:24px;font-weight:700;margin-bottom:6px;color:#f1f5f9">Navn på gjøremålet</h1>
-    <p style="color:#64748b;margin-bottom:20px;font-size:14px">Skriv inn navnet på gjøremålet du skal score.</p>
+    <p style="color:#94a3b8;margin-bottom:20px;font-size:15px">Skriv inn navnet på gjøremålet du skal score.</p>
     <input type="text" id="ti" value="${S.taskName.replace(/"/g, "&quot;")}" placeholder="f.eks. rengjøre bad, levere bil til service …"
       style="width:100%;background:#0f172a;border:1.5px solid #1e293b;border-radius:10px;padding:15px 16px;color:#e2e8f0;font-size:16px;margin-bottom:6px;transition:border-color .2s">
     <div id="nameHint" style="font-size:11px;color:${!S.taskName.trim() ? "#f59e0b" : "transparent"};margin-bottom:10px;padding-left:4px">⚠ Du må skrive inn et navn for å gå videre</div>
@@ -311,18 +311,18 @@ function pReg() {
       <div style="width:40px;height:40px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-family:monospace;font-weight:700;font-size:13px;color:${c};flex-shrink:0">${h.score}</div>
       <div style="flex:1;min-width:0">
         <div style="color:#e2e8f0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(h.task)}</div>
-        <div style="color:#64748b;font-size:12px;margin-top:2px">${h.date}</div>
+        <div style="color:#94a3b8;font-size:13px;margin-top:2px">${h.date}</div>
       </div>
       <button data-del="${i}" title="Slett denne registreringen"
         style="background:#1c0000;border:2px solid #dc2626;border-radius:8px;padding:6px 12px;color:#f87171;font-size:13px;font-weight:700;white-space:nowrap;flex-shrink:0">🗑 Slett</button>
     </div>`;
-  }).join("") : `<div style="text-align:center;color:#475569;padding:40px 0;font-size:14px">Ingen registreringer ennå</div>`;
+  }).join("") : `<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:15px">Ingen registreringer ennå</div>`;
 
   return `<div class="fade">
     ${backBtn("regBack", "← Tilbake til oversikt")}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <h2 style="font-size:20px;font-weight:700;color:#f1f5f9;margin:0">Alle registreringer</h2>
-      ${n ? `<span style="color:#475569;font-size:13px">${n} stk</span>` : ""}
+      ${n ? `<span style="color:#94a3b8;font-size:13px">${n} stk</span>` : ""}
     </div>
     ${n ? `<div style="margin-bottom:8px">${sletteknapp}</div>` : ""}
     ${items}
@@ -358,18 +358,18 @@ function pVisDetail() {
         <div style="width:48px;height:48px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-family:monospace;font-weight:700;font-size:17px;color:${c};flex-shrink:0">${e.score}</div>
         <div style="flex:1">
           <div style="color:#e2e8f0;font-size:16px;font-weight:700">${vrd(e.score).t}</div>
-          <div style="color:#64748b;font-size:14px;margin-top:2px">${e.date}</div>
+          <div style="color:#94a3b8;font-size:14px;margin-top:2px">${e.date}</div>
         </div>
         <button data-rescore="${encodeURIComponent(e.task)}" style="background:#0a1628;border:1.5px solid #334155;border-radius:8px;padding:8px 14px;color:#94a3b8;font-size:14px;white-space:nowrap;flex-shrink:0">↺ Score igjen</button>
       </div>
-      ${topD && e.scores ? `<div style="font-size:14px;color:#64748b;margin-top:6px">Tyngst: ${topD.icon} ${escHtml(topD.label)} (${e.scores[topD.id]})</div>` : ""}
+      ${topD && e.scores ? `<div style="font-size:14px;color:#94a3b8;margin-top:6px">Tyngst: ${topD.icon} ${escHtml(topD.label)} (${e.scores[topD.id]})</div>` : ""}
     </div>`;
   }).join("");
 
   return `<div class="fade">
     ${backBtn("detailBack", "← Tilbake til oversikt")}
     <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9;word-break:break-word">${escHtml(name)}</h2>
-    <div style="color:#64748b;font-size:14px;margin-bottom:20px">${n} scoring${n !== 1 ? "er" : ""} — eldste øverst</div>
+    <div style="color:#94a3b8;font-size:14px;margin-bottom:20px">${n} scoring${n !== 1 ? "er" : ""} — eldste øverst</div>
     ${n >= 2 ? `<div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px">${spark}</div>` : ""}
     ${rows}
   </div>`;
@@ -379,11 +379,11 @@ function pSettings() {
   return `<div class="fade">
     ${backBtn("settingsBack", "← Tilbake")}
     <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;color:#f1f5f9">Innstillinger</h2>
-    <p style="color:#64748b;font-size:15px;margin-bottom:32px">Importer og eksporter registreringene dine.</p>
+    <p style="color:#94a3b8;font-size:15px;margin-bottom:32px">Importer og eksporter registreringene dine.</p>
 
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:20px;margin-bottom:16px">
       <h3 style="color:#e2e8f0;font-size:17px;font-weight:700;margin-bottom:8px">Eksporter registreringer</h3>
-      <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:16px">Laster ned alle registreringene dine som en JSON-fil. Nyttig som sikkerhetskopi eller for å flytte data til en annen enhet.</p>
+      <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin-bottom:16px">Laster ned alle registreringene dine som en JSON-fil. Nyttig som sikkerhetskopi eller for å flytte data til en annen enhet.</p>
       <button id="expBtn" style="width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:700;${!S.history.length ? "background:#1e293b;color:#475569;cursor:not-allowed" : "background:linear-gradient(135deg,#1d4ed8,#0ea5e9);color:white;cursor:pointer"}">
         ↓ Eksporter registreringer${S.history.length ? ` (${S.history.length} stk)` : ""}
       </button>
@@ -392,7 +392,7 @@ function pSettings() {
 
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:20px">
       <h3 style="color:#e2e8f0;font-size:17px;font-weight:700;margin-bottom:8px">Importer registreringer</h3>
-      <p style="color:#64748b;font-size:14px;line-height:1.6;margin-bottom:8px">Last inn en tidligere eksportert JSON-fil for å gjenopprette eller flette inn registreringer.</p>
+      <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin-bottom:8px">Last inn en tidligere eksportert JSON-fil for å gjenopprette eller flette inn registreringer.</p>
       <p style="background:#0f172a;border-left:3px solid #3b82f6;padding:10px 14px;border-radius:0 8px 8px 0;color:#94a3b8;font-size:14px;line-height:1.6;margin-bottom:16px">
         ℹ️ Duplikater ignoreres automatisk — hvis du importerer samme fil flere ganger legges ingenting til på nytt.
       </p>
@@ -407,10 +407,10 @@ function p1() {
   const name = S.taskName ? `«${S.taskName}»` : "Gjøremålet";
   return `<div class="fade">
     <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">${name}</h2>
-    <p style="color:#64748b;font-size:13px;margin-bottom:20px">Dra hver glidebryter til det som passer best. Midten (50) er nøytralt.</p>
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:20px">Dra hver glidebryter til det som passer best. Midten (50) er nøytralt.</p>
     ${DIM.map(d => dimBar(d, S.scores[d.id])).join("")}
     <div style="display:flex;gap:10px;margin-top:8px">
-      <button id="b01" style="padding:14px 20px;background:transparent;border:1.5px solid #1e293b;border-radius:10px;color:#64748b;font-size:14px">← Endre navn</button>
+      <button id="b01" style="padding:14px 20px;background:transparent;border:1.5px solid #1e293b;border-radius:10px;color:#94a3b8;font-size:14px">← Endre navn</button>
       <button id="b12" style="flex:1;padding:14px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border:none;border-radius:10px;color:white;font-weight:700;font-size:15px">Neste: Vekting →</button>
     </div>
   </div>`;
@@ -423,25 +423,24 @@ function p2() {
   const milestone = MILESTONES[done];
   const bars = PAIRS.map((_, i) => `<div style="flex:1;height:4px;background:${i<done?"#3b82f6":i===done?"#60a5fa":"#1e293b"};border-radius:2px"></div>`).join("");
   const cards = pair.map((d, idx) => `
-    ${idx === 1 ? `<div style="text-align:center;color:#334155;font-family:monospace;font-weight:700;font-size:13px">eller</div>` : ""}
+    ${idx === 1 ? `<div style="text-align:center;color:#64748b;font-family:monospace;font-weight:700;font-size:14px">eller</div>` : ""}
     <button class="pb" data-pick="${d.id}"
       style="background:#0f172a;border:2px solid #1e293b;border-radius:14px;padding:22px 14px;color:#e2e8f0;text-align:center;transition:transform .1s,box-shadow .1s,border-color .1s">
       <div style="font-size:32px;margin-bottom:10px">${d.icon}</div>
       <div style="font-weight:700;font-size:14px;margin-bottom:6px">${d.label}</div>
-      <div style="font-size:11px;color:#64748b">${d.desc}</div>
     </button>`).join("");
 
   return `<div class="fade">
     <h2 style="font-size:17px;margin-bottom:4px;color:#f1f5f9">Hva føltes tyngst?</h2>
-    <p style="color:#64748b;font-size:13px;margin-bottom:16px">Klikk på det som bidro mest til belastningen for <strong style="color:#94a3b8">${escHtml(S.taskName) || "dette gjøremålet"}</strong>.</p>
+    <p style="color:#94a3b8;font-size:14px;margin-bottom:16px">Klikk på det som bidro mest til belastningen for <strong style="color:#94a3b8">${escHtml(S.taskName) || "dette gjøremålet"}</strong>.</p>
     <div style="background:#0a1628;border-radius:12px;padding:18px;margin-bottom:16px">
       <div style="display:flex;gap:3px;margin-bottom:8px">${bars}</div>
-      <div style="color:#475569;font-size:11px;font-family:monospace;text-align:right">${done} av ${total} valgt (${pct}%)</div>
+      <div style="color:#94a3b8;font-size:13px;font-family:monospace;text-align:right">${done} av ${total} valgt (${pct}%)</div>
       <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:16px">${cards}</div>
     </div>
     ${milestone ? `<div style="background:#0a2a1a;border:1px solid #166534;border-radius:8px;padding:10px 16px;margin-bottom:14px;color:#4ade80;font-size:13px">✓ ${milestone}</div>` : ""}
     <div style="display:flex;gap:16px;align-items:center;margin-top:4px">
-      <button id="b21" style="background:transparent;border:none;color:#475569;font-size:13px;padding:4px 0">← Tilbake til skalaer</button>
+      <button id="b21" style="background:transparent;border:none;color:#94a3b8;font-size:14px;padding:4px 0">← Tilbake til skalaer</button>
       ${S.weightHistory.length > 0 ? `<button id="undoPick" style="background:transparent;border:none;color:#60a5fa;font-size:13px;padding:4px 0">↩ Angre siste valg</button>` : ""}
     </div>
   </div>`;
@@ -458,7 +457,7 @@ function p3() {
       <div style="flex:1;height:6px;background:#1e293b;border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${S.scores[d.id]}%;background:${c};border-radius:3px"></div>
       </div>
-      <span style="font-family:monospace;font-size:12px;color:#64748b;min-width:28px;text-align:right">${S.scores[d.id]}</span>
+      <span style="font-family:monospace;font-size:13px;color:#94a3b8;min-width:28px;text-align:right">${S.scores[d.id]}</span>
 
     </div>`;
   }).join("");
@@ -469,15 +468,15 @@ function p3() {
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:16px;padding:28px;text-align:center;margin-bottom:20px">
       ${ring(score, 130)}
       <div style="margin-top:12px;font-family:monospace;font-size:24px;font-weight:700;color:${vd.c}">${vd.t}</div>
-      <div style="color:#475569;font-size:12px;margin-top:4px">Vektet TLX-skår</div>
+      <div style="color:#94a3b8;font-size:13px;margin-top:4px">Vektet TLX-skår</div>
     </div>
     ${rows}
     <div style="background:#0a1628;border:1px solid #1e293b;border-radius:12px;padding:14px 18px;margin:16px 0">
-      <div style="color:#60a5fa;font-size:11px;font-family:monospace;margin-bottom:6px">TRAKK MEST</div>
+      <div style="color:#60a5fa;font-size:12px;font-family:monospace;margin-bottom:6px">TRAKK MEST</div>
       <div style="color:#e2e8f0;font-size:14px">${top.icon} <strong>${top.label}</strong> — skår ${S.scores[top.id]}, vekt ${Math.round(S.weights[top.id] / tw * 100)}%</div>
     </div>
     <button id="sav" style="width:100%;padding:15px;background:linear-gradient(135deg,#1d4ed8,#0ea5e9);border:none;border-radius:10px;color:white;font-weight:700;font-size:16px;margin-bottom:10px">Gå tilbake til startsiden</button>
-    <button id="b30" style="width:100%;padding:13px;background:transparent;border:1.5px solid #475569;border-radius:10px;color:#475569;font-size:14px">Ikke lagre — gå til start</button>
+    <button id="b30" style="width:100%;padding:13px;background:transparent;border:1.5px solid #475569;border-radius:10px;color:#94a3b8;font-size:14px">Ikke lagre — gå til start</button>
   </div>`;
 }
 
@@ -514,8 +513,8 @@ function pDimDetail() {
   return `<div class="fade">
     ${backBtn("dimDetailBack", "← Tilbake til oversikt")}
     <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9">${dim.icon} ${dim.label}</h2>
-    <div style="color:#64748b;font-size:14px;margin-bottom:20px">Gjøremål rangert etter denne belastningen — siste scoring</div>
-    ${ranked.length ? items : `<div style="text-align:center;color:#475569;padding:40px 0;font-size:14px">Ingen registreringer ennå</div>`}
+    <div style="color:#94a3b8;font-size:14px;margin-bottom:20px">Gjøremål rangert etter denne belastningen — siste scoring</div>
+    ${ranked.length ? items : `<div style="text-align:center;color:#94a3b8;padding:40px 0;font-size:15px">Ingen registreringer ennå</div>`}
   </div>`;
 }
 
@@ -546,7 +545,7 @@ function render() {
       ${inAssess ? `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
           <div style="flex:1">${stepBar(S.step)}</div>
-          ${S.step < 3 ? `<button id="avbryt" style="margin-left:16px;margin-top:2px;background:transparent;border:1px solid #334155;border-radius:7px;padding:5px 12px;color:#64748b;font-size:12px;white-space:nowrap">Avbryt vurdering</button>` : ""}
+          ${S.step < 3 ? `<button id="avbryt" style="margin-left:16px;margin-top:2px;background:transparent;border:1px solid #334155;border-radius:7px;padding:5px 12px;color:#94a3b8;font-size:13px;white-space:nowrap">Avbryt vurdering</button>` : ""}
         </div>` : ""}
       ${currentPage()}
     </div>`;
