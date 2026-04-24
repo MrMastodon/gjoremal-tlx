@@ -1,6 +1,7 @@
 # Gjøremål-TLX
 
 Et enkelt verktøy for å måle opplevd belastning ved hverdagslige gjøremål, basert på NASA Task Load Index (NASA-TLX).
+DISCLAIMER: Dette er et vibekodet prosjekt!
 
 ## Hva er dette?
 
